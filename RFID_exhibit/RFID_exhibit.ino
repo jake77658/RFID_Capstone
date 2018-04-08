@@ -4,9 +4,20 @@
 #include <MFRC522.h>
 #include <Servo.h>
 
+#define RST_1_PIN     5
+#define RST_2_PIN     10
+#define RST_3_PIN     4
+#define RST_4_PIN     22
+#define RST_5_PIN     5
+#define RST_6_PIN     4
+#define SS_1_PIN      53   
+#define SS_2_PIN      13    
+#define SS_3_PIN      49   
+#define SS_4_PIN      23     
+#define SS_5_PIN      53   
+#define SS_6_PIN      49         
 
-#define SS_PIN 10
-#define RST_PIN 9
+#define numGates   3
 
 //uncomment this line if using a Common Anode LED
 #define COMMON_ANODE
@@ -19,9 +30,9 @@ struct Color{
 };
 
 //set the pins that will be connected to the Arduino for rgb values
-int redPin = 7;
-int greenPin = 6;
-int bluePin = 5;
+int redPins[] = {30, 31, 32, 33, 34, 35};
+int greenPins[] = {36, 37, 38, 39, 40, 41};
+int bluePins[] = {42, 43, 44, 45, 46, 47};
 
 //initialize a counter to track game progress
 int gateNumber = 0;
@@ -44,27 +55,37 @@ byte yellowCard = 142;
 byte purpleCard = 117;
 byte aquaCard = 142;
 
-MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
-MFRC522::MIFARE_Key key; 
+byte ssPins[] = {SS_1_PIN, SS_2_PIN, SS_3_PIN, SS_4_PIN, SS_5_PIN, SS_6_PIN};
+byte rstPins[] = {RST_1_PIN, RST_2_PIN, RST_3_PIN, RST_4_PIN, RST_5_PIN, RST_6_PIN};
+
+MFRC522 rfid[numGates];   // Create MFRC522 instance.
 Servo myServo;
  
 void setup()
 {
-  pinMode(redPin, OUTPUT);
-  pinMode(greenPin, OUTPUT);
-  pinMode(bluePin, OUTPUT);  
   Serial.begin(9600);
+  while (!Serial);
+  
+  SPI.begin();        // Init SPI bus
 
-  myServo.attach(4);
+  for (uint8_t reader = 0; reader < numGates; reader++) {
+    rfid[reader].PCD_Init(ssPins[reader], rstPins[reader]); // Init each MFRC522 card
+    Serial.print(F("Reader "));
+    Serial.print(reader);
+    Serial.print(F(": "));
+    rfid[reader].PCD_DumpVersionToSerial();
+
+    pinMode(redPins[reader], OUTPUT);
+    pinMode(greenPins[reader], OUTPUT);
+    pinMode(bluePins[reader], OUTPUT);  
+  }
+  
+  
+  
+
+//  myServo.attach(4);
 
   myServo.write(10);
-
-  SPI.begin(); // Init SPI bus
-  rfid.PCD_Init(); // Init MFRC522 
-
-  for (byte i = 0; i < 6; i++) {
-    key.keyByte[i] = 0xFF;
-  }
 
   randomSeed(analogRead(0));
 
@@ -80,11 +101,11 @@ void loop()
   //randomly select and set color
   int randomIndex = random() % 6;
   Color randColor = colors[randomIndex];
-  setColor(randColor.red, randColor.green, randColor.blue);
+  setColor(randColor.red, randColor.green, randColor.blue, gateNumber);
   
   // Look for new cards
   Serial.println("Reading...");
-  while (! readRFID());
+  while(!readRFID(gateNumber));
 
   //create random variable to represent the correct card value for comparison
   byte myCard;
@@ -114,7 +135,7 @@ void loop()
   }
   
   //store the value of the card that was just scanned
-  byte *card = rfid.uid.uidByte;
+  byte *card = rfid[gateNumber].uid.uidByte;
 
   //print the value of the scanned card
   Serial.print("Card: ");
@@ -128,9 +149,9 @@ void loop()
     Serial.println("Reading...");
     
     //wait for a card to be scanned
-    while(!readRFID());
+    while(!readRFID(gateNumber));
       
-    card = rfid.uid.uidByte;
+    card = rfid[gateNumber].uid.uidByte;
     Serial.print("Card: ");
     Serial.println(*card);
   }
@@ -145,44 +166,40 @@ void loop()
 }
 
 void gameOver(){
-  setColor(0, 0, 0);
+  for(int gate = 0; gate < numGates; gate++){
+    setColor(0, 0, 0, gate);
+  }
   exit(0);
 }
  
-void setColor(int red, int green, int blue)
+void setColor(int red, int green, int blue, int gate)
 {
   #ifdef COMMON_ANODE
     red = 255 - red;
     green = 255 - green;
     blue = 255 - blue;
   #endif
-  analogWrite(redPin, red);
-  analogWrite(greenPin, green);
-  analogWrite(bluePin, blue);  
+  analogWrite(redPins[gate], red);
+  analogWrite(greenPins[gate], green);
+  analogWrite(bluePins[gate], blue);  
 }
 
-/**
- * Helper routine to dump a byte array as hex values to Serial. 
- */
-void printHex(byte *buffer, byte bufferSize) {
-  for (byte i = 0; i < bufferSize; i++) {
-    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-    Serial.print(buffer[i], HEX);
-  }
-}
+int readRFID(uint8_t gateNumber){
 
-int readRFID(){
   // Look for new cards
-  if ( ! rfid.PICC_IsNewCardPresent())
+  if ( ! rfid[gateNumber].PICC_IsNewCardPresent())
     return 0;
 
   // Verify if the NUID has been readed
-  if ( ! rfid.PICC_ReadCardSerial())
+  if ( ! rfid[gateNumber].PICC_ReadCardSerial())
     return 0;
     
-   rfid.PICC_HaltA(); // Stop reading
+   rfid[gateNumber].PICC_HaltA(); // Stop reading
+   rfid[gateNumber].PCD_StopCrypto1();
    return 1;
 
 }
+
+
 
 
