@@ -7,15 +7,11 @@
 #define RST_1_PIN     5
 #define RST_2_PIN     10
 #define RST_3_PIN     4
-#define RST_4_PIN     22
-#define RST_5_PIN     5
-#define RST_6_PIN     4
+
 #define SS_1_PIN      53   
 #define SS_2_PIN      13    
 #define SS_3_PIN      49   
-#define SS_4_PIN      23     
-#define SS_5_PIN      53   
-#define SS_6_PIN      49         
+     
 
 #define numGates   3
 
@@ -30,9 +26,11 @@ struct Color{
 };
 
 //set the pins that will be connected to the Arduino for rgb values
-int redPins[] = {30, 31, 32, 33, 34, 35};
-int greenPins[] = {36, 37, 38, 39, 40, 41};
-int bluePins[] = {42, 43, 44, 45, 46, 47};
+int redPins[] = {30, 31, 32};//, 33, 34, 35};
+int greenPins[] = {36, 37, 38};//, 39, 40, 41};
+int bluePins[] = {42, 43, 44};//, 45, 46, 47};
+
+int servoPins[] = {22, 23, 24};
 
 //initialize a counter to track game progress
 int gateNumber = 0;
@@ -48,18 +46,18 @@ struct Color aqua = {0, 255, 255};
 Color colors[6] = {red, green, blue, yellow, purple, aqua};
 
 //match colors to specific cards by using their UID
-byte redCard = 142;
-byte greenCard = 117;
-byte blueCard = 117;
+byte redCard = 240;
+byte greenCard = 142;
+byte blueCard = 240;
 byte yellowCard = 142;
-byte purpleCard = 117;
-byte aquaCard = 142;
+byte purpleCard = 142;
+byte aquaCard = 240;
 
-byte ssPins[] = {SS_1_PIN, SS_2_PIN, SS_3_PIN, SS_4_PIN, SS_5_PIN, SS_6_PIN};
-byte rstPins[] = {RST_1_PIN, RST_2_PIN, RST_3_PIN, RST_4_PIN, RST_5_PIN, RST_6_PIN};
+byte ssPins[] = {SS_1_PIN, SS_2_PIN, SS_3_PIN};
+byte rstPins[] = {RST_1_PIN, RST_2_PIN, RST_3_PIN};
 
 MFRC522 rfid[numGates];   // Create MFRC522 instance.
-Servo myServo;
+Servo myServo[numGates];
  
 void setup()
 {
@@ -77,32 +75,28 @@ void setup()
 
     pinMode(redPins[reader], OUTPUT);
     pinMode(greenPins[reader], OUTPUT);
-    pinMode(bluePins[reader], OUTPUT);  
-  }
-  
-  
-  
+    pinMode(bluePins[reader], OUTPUT);
+    setColor(0, 0, 0, reader);
 
-//  myServo.attach(4);
-
-  myServo.write(10);
-
+    myServo[reader].attach(servoPins[reader]);
+    myServo[reader].write(160);
+  } 
+  
   randomSeed(analogRead(0));
 
+  gateNumber = 0;
 }
  
 void loop()
 {
-  if(gateNumber == 6){
+  if(gateNumber >= numGates){
     gateNumber = 0;
   }
 
-  myServo.write(10);
   //randomly select and set color
   int randomIndex = random() % 6;
   Color randColor = colors[randomIndex];
   setColor(randColor.red, randColor.green, randColor.blue, gateNumber);
-  
   // Look for new cards
   Serial.println("Reading...");
   while(!readRFID(gateNumber));
@@ -155,12 +149,14 @@ void loop()
     Serial.print("Card: ");
     Serial.println(*card);
   }
+  myServo[gateNumber].attach(servoPins[gateNumber]);
+  myServo[gateNumber].write(80);
+  delay(2000);
 
+  setColor(0, 0, 0, gateNumber);
   gateNumber++;
-  myServo.write(165);
-  delay(5000);
 
-  if(gateNumber >= 6){
+  if(gateNumber >= numGates){
     gameOver();
   }
 }
