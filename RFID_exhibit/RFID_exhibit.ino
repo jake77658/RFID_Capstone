@@ -3,8 +3,6 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Servo.h>
-#include <Time.h>
-#include <TimeAlarms.h>
 
 #define RST_1_PIN     4
 #define RST_2_PIN     10
@@ -43,17 +41,15 @@ struct Color red = {255, 0, 0};
 struct Color green = {0, 255, 0};
 struct Color blue = {0, 0, 255};
 struct Color purple = {255, 0, 255};
-struct Color aqua = {127, 255, 212};
 
-Color colors[5] = {red, green, blue, purple, aqua};
+Color colors[4] = {red, green, blue, purple};
 
 //match colors to specific cards by using their UID
 byte startTag = 174;
-byte redCard = 74;
-byte greenCard = 55;
-byte blueCard = 74;
-byte purpleCard = 55;
-byte aquaCard = 74;
+byte redCard = 142;
+byte greenCard = 240;
+byte blueCard = 112;
+byte purpleCard = 144;
 
 byte ssPins[] = {SS_1_PIN, SS_2_PIN, SS_3_PIN};
 byte rstPins[] = {RST_1_PIN, RST_2_PIN, RST_3_PIN};
@@ -103,10 +99,10 @@ void loop()
   }
 
   //randomly select and set color
-  randomIndex = random() % 5;
+  randomIndex = random() % 4;
   //pick new colors until it is different from the previous one chosen
   while(randomIndex == previousIndex){
-    randomIndex = random() % 5;
+    randomIndex = random() % 4;
   }
   previousIndex = randomIndex;
 
@@ -133,12 +129,8 @@ void loop()
     myCard = blueCard;
   }
   //purple
-  else if(randomIndex == 3){
+  else {
     myCard = purpleCard;
-  }
-  //aqua
-  else{
-    myCard = aquaCard;
   }
   
   //store the value of the card that was just scanned
@@ -170,8 +162,9 @@ void loop()
   //after 2 colors, move to the next gate
   if(colorNumber == 2){
     openGate();
-    delay(2000);
   }
+
+  delay(1000);
   
   if(gateNumber >= numGates){
     gameOver();
